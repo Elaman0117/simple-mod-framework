@@ -1,7 +1,9 @@
 name: Create Artifact
 
 on:
-  push
+  push:
+    branches:
+      - main
 
 jobs:
   build:
@@ -102,3 +104,34 @@ jobs:
         with:
           name: Output
           path: dist/Release.zip
+
+      - name: Get short SHA
+        id: sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
+
+      - name: Delete existing dev release
+        uses: dev-drprasad/delete-tag-and-release@v1.1
+        with:
+          tag_name: dev
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          delete_release: true
+        continue-on-error: true
+
+      - name: Create development release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: dev
+          name: "Development Build (${{ steps.sha.outputs.short_sha }})"
+          body: |
+            ⚠️ **This is an automated development build from the latest commit on main.**
+
+            **Commit:** ${{ github.sha }}
+            **Branch:** ${{ github.ref_name }}
+            **Built:** ${{ github.event.head_commit.timestamp }}
+
+            This build is automatically updated with each push to the main branch.
+            For stable releases, please use the versioned releases.
+          prerelease: true
+          files: dist/Release.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
